@@ -131,6 +131,9 @@ static const struct AssemblyType {
     {"gcc",
         ".globl %s\n"
         "\t.section .note.GNU-stack,\"\",%%progbits\n"
+        "#ifdef __CET__\n"
+        "# include <cet.h>\n"
+        "#endif\n"
         "\t.section .rodata\n"
         "\t.balign 16\n"
         "#ifdef U_HIDE_DATA_SYMBOL\n"
@@ -418,9 +421,9 @@ writeCCode(
         filename,
         destdir,
         buffer,
-        sizeof(buffer),
+        static_cast<int32_t>(sizeof(buffer)),
         entry + uprv_strlen(entry),
-        sizeof(entry) - uprv_strlen(entry),
+        static_cast<int32_t>(sizeof(entry) - uprv_strlen(entry)),
         ".c",
         optFilename);
 
@@ -679,7 +682,7 @@ getOutFilename(
         outFilenameBuilder.append(destdir, status);
         outFilenameBuilder.ensureEndsWithFileSeparator(status);
     } else {
-        outFilenameBuilder.append(inFilename, basename - inFilename, status);
+        outFilenameBuilder.append(inFilename, static_cast<int32_t>(basename - inFilename), status);
     }
     inFilename=basename;
 
