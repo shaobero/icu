@@ -1,11 +1,12 @@
 // © 2018 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html
 
+#ifndef __UNUMBERFORMATTER_H__
+#define __UNUMBERFORMATTER_H__
+
 #include "unicode/utypes.h"
 
 #if !UCONFIG_NO_FORMATTING
-#ifndef __UNUMBERFORMATTER_H__
-#define __UNUMBERFORMATTER_H__
 
 #include "unicode/parseerr.h"
 #include "unicode/ufieldpositer.h"
@@ -146,6 +147,30 @@ typedef enum UNumberUnitWidth {
      * @stable ICU 60
      */
             UNUM_UNIT_WIDTH_ISO_CODE,
+
+#ifndef U_HIDE_DRAFT_API
+    /**
+     * Use the formal variant of the currency symbol; for example, "NT$" for the New Taiwan
+     * dollar in zh-TW.
+     *
+     * <p>
+     * Behavior of this option with non-currency units is not defined at this time.
+     *
+     * @draft ICU 68
+     */
+            UNUM_UNIT_WIDTH_FORMAL,
+
+    /**
+     * Use the alternate variant of the currency symbol; for example, "TL" for the Turkish
+     * lira (TRY).
+     *
+     * <p>
+     * Behavior of this option with non-currency units is not defined at this time.
+     *
+     * @draft ICU 68
+     */
+            UNUM_UNIT_WIDTH_VARIANT,
+#endif  // U_HIDE_DRAFT_API
 
     /**
      * Format the number according to the specified unit, but do not display the unit. For currencies, apply
@@ -600,7 +625,7 @@ unumf_resultToString(const UFormattedNumber* uresult, UChar* buffer, int32_t buf
  *            "beginIndex" field is set to the beginning of the first occurrence of the field after the
  *            input "endIndex", and "endIndex" is set to the end of that occurrence of the field
  *            (exclusive index). If a field position is not found, the FieldPosition is not changed and
- *            the method returns FALSE.
+ *            the method returns false.
  * @param ec Set if an error occurs.
  * @stable ICU 62
  */
@@ -701,5 +726,5 @@ U_DEFINE_LOCAL_OPEN_POINTER(LocalUFormattedNumberPointer, UFormattedNumber, unum
 U_NAMESPACE_END
 #endif // U_SHOW_CPLUSPLUS_API
 
-#endif //__UNUMBERFORMATTER_H__
 #endif /* #if !UCONFIG_NO_FORMATTING */
+#endif //__UNUMBERFORMATTER_H__

@@ -22,12 +22,12 @@
 #include "unicode/utypes.h"
 #include "unicode/uset.h"
 #include "unicode/parseerr.h"
-#include "unicode/localpointer.h"
 
 #if !UCONFIG_NO_NORMALIZATION
 
 
 #if U_SHOW_CPLUSPLUS_API
+#include "unicode/localpointer.h"
 #include "unicode/unistr.h"
 #include "unicode/uniset.h"
 #endif
@@ -154,10 +154,10 @@
  *     UChar* skel = (UChar*) malloc(++len * sizeof(UChar));
  *     status = U_ZERO_ERROR;
  *     uspoof_getSkeleton(sc, 0, str, -1, skel, len, &status);
- *     UBool result = FALSE;
+ *     UBool result = false;
  *     for (size_t i=0; i<DICTIONARY_LENGTH; i++) {
  *         result = u_strcmp(skel, skeletons[i]) == 0;
- *         if (result == TRUE) { break; }
+ *         if (result == true) { break; }
  *     }
  *     // Has confusable in dictionary: 1 (status: U_ZERO_ERROR)
  *     printf("Has confusable in dictionary: %d (status: %s)\n", result, u_errorName(status));
@@ -691,8 +691,10 @@ uspoof_clone(const USpoofChecker *sc, UErrorCode *status);
  * Specify the bitmask of checks that will be performed by {@link uspoof_check}. Calling this method
  * overwrites any checks that may have already been enabled. By default, all checks are enabled.
  *
- * To enable specific checks and disable all others, the "whitelisted" checks should be ORed together. For
- * example, to fail strings containing characters outside of the set specified by {@link uspoof_setAllowedChars} and
+ * To enable specific checks and disable all others,
+ * OR together only the bit constants for the desired checks.
+ * For example, to fail strings containing characters outside of
+ * the set specified by {@link uspoof_setAllowedChars} and
  * also strings that contain digits from mixed numbering systems:
  *
  * <pre>
@@ -701,8 +703,9 @@ uspoof_clone(const USpoofChecker *sc, UErrorCode *status);
  * }
  * </pre>
  *
- * To disable specific checks and enable all others, the "blacklisted" checks should be ANDed away from
- * ALL_CHECKS. For example, if you are not planning to use the {@link uspoof_areConfusable} functionality,
+ * To disable specific checks and enable all others,
+ * start with ALL_CHECKS and "AND away" the not-desired checks.
+ * For example, if you are not planning to use the {@link uspoof_areConfusable} functionality,
  * it is good practice to disable the CONFUSABLE check:
  *
  * <pre>

@@ -946,7 +946,7 @@ group: dayperiodrules
 group: listformatter
     listformatter.o ulistformatter.o
   deps
-    uchar resourcebundle simpleformatter format uclean_i18n formatted_value_iterimpl
+    uchar resourcebundle simpleformatter format uclean_i18n formatted_value_sbimpl
 
 group: double_conversion
     double-conversion-bignum.o double-conversion-double-to-string.o
@@ -1000,7 +1000,7 @@ group: numberformatter
 
 group: number_skeletons
     # Number skeleton support; separated from numberformatter
-    number_skeletons.o number_capi.o number_asformat.o
+    number_skeletons.o number_capi.o number_asformat.o numrange_capi.o
   deps
     numberformatter
     units_extra
@@ -1056,6 +1056,7 @@ group: formatting
     sharedbreakiterator # for reldatefmt.o
     uclean_i18n
     region
+    formatted_value_iterimpl  # NOTE (2020-08-27): Not currently used.
 
 group: sharedbreakiterator
     sharedbreakiterator.o
@@ -1065,10 +1066,10 @@ group: sharedbreakiterator
 group: units_extra
     measunit_extra.o
   deps
-    units ucharstriebuilder ucharstrie uclean_i18n
+    units bytestriebuilder bytestrie resourcebundle uclean_i18n
 
 group: units
-    measunit.o currunit.o nounit.o
+    measunit.o currunit.o
   deps
     stringenumeration errorcode
 

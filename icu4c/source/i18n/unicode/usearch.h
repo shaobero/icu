@@ -15,10 +15,13 @@
 
 #if !UCONFIG_NO_COLLATION && !UCONFIG_NO_BREAK_ITERATION
 
-#include "unicode/localpointer.h"
 #include "unicode/ucol.h"
 #include "unicode/ucoleitr.h"
 #include "unicode/ubrk.h"
+
+#if U_SHOW_CPLUSPLUS_API
+#include "unicode/localpointer.h"
+#endif   // U_SHOW_CPLUSPLUS_API
 
 /**
  * \file
@@ -814,7 +817,7 @@ U_STABLE void U_EXPORT2 usearch_reset(UStringSearch *strsrch);
   *                    A value of -1 will be returned if no match was found.
   *          
   *  @param status     Report any errors.  Note that no match found is not an error.
-  *  @return           TRUE if a match was found, FALSE otherwise.
+  *  @return           true if a match was found, false otherwise.
   *
   *  @internal
   */
@@ -874,7 +877,7 @@ U_INTERNAL UBool U_EXPORT2 usearch_search(UStringSearch *strsrch,
   *                    A value of -1 will be returned if no match was found.
   *          
   *  @param status     Report any errors.  Note that no match found is not an error.
-  *  @return           TRUE if a match was found, FALSE otherwise.
+  *  @return           true if a match was found, false otherwise.
   *
   *  @internal
   */

@@ -22,7 +22,10 @@
 #include "unicode/utypes.h"
 #include "unicode/udat.h"
 #include "unicode/uenum.h"
+
+#if U_SHOW_CPLUSPLUS_API
 #include "unicode/localpointer.h"
+#endif   // U_SHOW_CPLUSPLUS_API
 
 /**
  * \file
@@ -652,6 +655,8 @@ udatpg_getPatternForSkeleton(const UDateTimePatternGenerator *dtpg,
                              const UChar *skeleton, int32_t skeletonLength,
                              int32_t *pLength);
 
+#if !UCONFIG_NO_FORMATTING
+
 #ifndef U_HIDE_DRAFT_API
 /**
  * Return the default hour cycle for a locale. Uses the locale that the
@@ -669,5 +674,7 @@ udatpg_getPatternForSkeleton(const UDateTimePatternGenerator *dtpg,
 U_DRAFT UDateFormatHourCycle U_EXPORT2
 udatpg_getDefaultHourCycle(const UDateTimePatternGenerator *dtpg, UErrorCode* pErrorCode);
 #endif  /* U_HIDE_DRAFT_API */
+
+#endif /* #if !UCONFIG_NO_FORMATTING */
 
 #endif

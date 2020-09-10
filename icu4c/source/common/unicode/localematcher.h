@@ -1,5 +1,5 @@
 // © 2019 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html#License
+// License & terms of use: http://www.unicode.org/copyright.html
 
 // localematcher.h
 // created: 2019may08 Markus W. Scherer
@@ -231,8 +231,8 @@ public:
         /**
          * Returns the best-matching supported locale.
          * If none matched well enough, this is the default locale.
-         * The default locale is nullptr if the list of supported locales is empty and
-         * no explicit default locale is set.
+         * The default locale is nullptr if Builder::setNoDefaultLocale() was called,
+         * or if the list of supported locales is empty and no explicit default locale is set.
          *
          * @return the best-matching supported locale, or nullptr.
          * @draft ICU 65
@@ -419,9 +419,23 @@ public:
          */
         Builder &addSupportedLocale(const Locale &locale);
 
+#ifndef U_HIDE_DRAFT_API
+        /**
+         * Sets no default locale.
+         * There will be no explicit or implicit default locale.
+         * If there is no good match, then the matcher will return nullptr for the
+         * best supported locale.
+         *
+         * @draft ICU 68
+         */
+        Builder &setNoDefaultLocale();
+#endif  // U_HIDE_DRAFT_API
+
         /**
          * Sets the default locale; if nullptr, or if it is not set explicitly,
          * then the first supported locale is used as the default locale.
+         * There is no default locale at all (nullptr will be returned instead)
+         * if setNoDefaultLocale() is called.
          *
          * @param defaultLocale the default locale (will be copied)
          * @return this Builder object
@@ -466,6 +480,31 @@ public:
             return *this;
         }
 
+#ifndef U_HIDE_DRAFT_API
+        /**
+         * Sets the maximum distance for an acceptable match.
+         * The matcher will return a match for a pair of locales only if
+         * they match at least as well as the pair given here.
+         *
+         * For example, setMaxDistance(en-US, en-GB) limits matches to ones where the
+         * (desired, support) locales have a distance no greater than a region subtag difference.
+         * This is much stricter than the CLDR default.
+         *
+         * The details of locale matching are subject to changes in
+         * CLDR data and in the algorithm.
+         * Specifying a maximum distance in relative terms via a sample pair of locales
+         * insulates from changes that affect all distance metrics similarly,
+         * but some changes will necessarily affect relative distances between
+         * different pairs of locales.
+         *
+         * @param desired the desired locale for distance comparison.
+         * @param supported the supported locale for distance comparison.
+         * @return this Builder object
+         * @draft ICU 68
+         */
+        Builder &setMaxDistance(const Locale &desired, const Locale &supported);
+#endif  // U_HIDE_DRAFT_API
+
         /**
          * Sets the UErrorCode if an error occurred while setting parameters.
          * Preserves older error codes in the outErrorCode.
@@ -473,7 +512,7 @@ public:
          * @param outErrorCode Set to an error code if it does not contain one already
          *                  and an error occurred while setting parameters.
          *                  Otherwise unchanged.
-         * @return TRUE if U_FAILURE(outErrorCode)
+         * @return true if U_FAILURE(outErrorCode)
          * @draft ICU 65
          */
         UBool copyErrorTo(UErrorCode &outErrorCode) const;
@@ -505,8 +544,11 @@ public:
         int32_t thresholdDistance_ = -1;
         ULocMatchDemotion demotion_ = ULOCMATCH_DEMOTION_REGION;
         Locale *defaultLocale_ = nullptr;
+        bool withDefault_ = true;
         ULocMatchFavorSubtag favor_ = ULOCMATCH_FAVOR_LANGUAGE;
         ULocMatchDirection direction_ = ULOCMATCH_DIRECTION_WITH_ONE_WAY;
+        Locale *maxDistanceDesired_ = nullptr;
+        Locale *maxDistanceSupported_ = nullptr;
     };
 
     // FYI No public LocaleMatcher constructors in C++; use the Builder.
@@ -603,6 +645,23 @@ public:
      * @draft ICU 65
      */
     Result getBestMatchResult(Locale::Iterator &desiredLocales, UErrorCode &errorCode) const;
+#endif  // U_HIDE_DRAFT_API
+
+#ifndef U_HIDE_DRAFT_API
+    /**
+     * Returns true if the pair of locales matches acceptably.
+     * This is influenced by Builder options such as setDirection(), setFavorSubtag(),
+     * and setMaxDistance().
+     *
+     * @param desired The desired locale.
+     * @param supported The supported locale.
+     * @param errorCode ICU error code. Its input value must pass the U_SUCCESS() test,
+     *                  or else the function returns immediately. Check for U_FAILURE()
+     *                  on output or use with function chaining. (See User Guide for details.)
+     * @return true if the pair of locales matches acceptably.
+     * @draft ICU 68
+     */
+    UBool isMatch(const Locale &desired, const Locale &supported, UErrorCode &errorCode) const;
 #endif  // U_HIDE_DRAFT_API
 
 #ifndef U_HIDE_INTERNAL_API

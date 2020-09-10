@@ -36,6 +36,8 @@ NumberFormatterApiTest::NumberFormatterApiTest(UErrorCode& status)
           ESP(u"ESP", status),
           PTE(u"PTE", status),
           RON(u"RON", status),
+          TWD(u"TWD", status),
+          TRY(u"TRY", status),
           CNY(u"CNY", status),
           FRENCH_SYMBOLS(Locale::getFrench(), status),
           SWISS_SYMBOLS(Locale("de-CH"), status),
@@ -483,6 +485,17 @@ void NumberFormatterApiTest::notationCompact() {
             1e7,
             u"1000\u842C");
 
+    if (!logKnownIssue("21258", "StandardPlural cannot handle keywords 1, 0")) {
+        assertFormatSingle(
+                u"Compact with plural form =1 (ICU-21258)",
+                u"compact-long",
+                u"K",
+                NumberFormatter::with().notation(Notation::compactLong()),
+                Locale("fr-FR"),
+                1e3,
+                u"mille");
+    }
+
     assertFormatSingle(
             u"Compact Infinity",
             u"compact-short",
@@ -851,6 +864,42 @@ void NumberFormatterApiTest::unitCurrency() {
             u"US$5.43");
 
     assertFormatSingle(
+            u"Currency Difference between Formal and Short (Formal Version)",
+            u"currency/TWD unit-width-formal",
+            u"currency/TWD unit-width-formal",
+            NumberFormatter::with().unit(TWD).unitWidth(UNUM_UNIT_WIDTH_FORMAL),
+            Locale("zh-TW"),
+            5.43,
+            u"NT$5.43");
+
+    assertFormatSingle(
+            u"Currency Difference between Formal and Short (Short Version)",
+            u"currency/TWD unit-width-short",
+            u"currency/TWD unit-width-short",
+            NumberFormatter::with().unit(TWD).unitWidth(UNUM_UNIT_WIDTH_SHORT),
+            Locale("zh-TW"),
+            5.43,
+            u"$5.43");
+
+    assertFormatSingle(
+            u"Currency Difference between Variant and Short (Formal Version)",
+            u"currency/TRY unit-width-variant",
+            u"currency/TRY unit-width-variant",
+            NumberFormatter::with().unit(TRY).unitWidth(UNUM_UNIT_WIDTH_VARIANT),
+            Locale("tr-TR"),
+            5.43,
+            u"TL\u00A05,43");
+
+    assertFormatSingle(
+            u"Currency Difference between Variant and Short (Short Version)",
+            u"currency/TRY unit-width-short",
+            u"currency/TRY unit-width-short",
+            NumberFormatter::with().unit(TRY).unitWidth(UNUM_UNIT_WIDTH_SHORT),
+            Locale("tr-TR"),
+            5.43,
+            u"₺5,43");
+
+    assertFormatSingle(
             u"Currency-dependent format (Control)",
             u"currency/USD unit-width-short",
             u"currency/USD unit-width-short",
@@ -975,6 +1024,77 @@ void NumberFormatterApiTest::unitPercent() {
             Locale::getEnglish(),
             -98.7654321,
             u"-98.765432%");
+
+    // ICU-20923
+    assertFormatDescendingBig(
+            u"Compact Percent",
+            u"compact-short percent",
+            u"K %",
+            NumberFormatter::with()
+                    .notation(Notation::compactShort())
+                    .unit(NoUnit::percent()),
+            Locale::getEnglish(),
+            u"88M%",
+            u"8.8M%",
+            u"876K%",
+            u"88K%",
+            u"8.8K%",
+            u"876%",
+            u"88%",
+            u"8.8%",
+            u"0%");
+
+    // ICU-20923
+    assertFormatDescendingBig(
+            u"Compact Percent with Scale",
+            u"compact-short percent scale/100",
+            u"K %x100",
+            NumberFormatter::with()
+                    .notation(Notation::compactShort())
+                    .unit(NoUnit::percent())
+                    .scale(Scale::powerOfTen(2)),
+            Locale::getEnglish(),
+            u"8.8B%",
+            u"876M%",
+            u"88M%",
+            u"8.8M%",
+            u"876K%",
+            u"88K%",
+            u"8.8K%",
+            u"876%",
+            u"0%");
+
+    // ICU-20923
+    assertFormatDescendingBig(
+            u"Compact Percent Long Name",
+            u"compact-short percent unit-width-full-name",
+            u"K % unit-width-full-name",
+            NumberFormatter::with()
+                    .notation(Notation::compactShort())
+                    .unit(NoUnit::percent())
+                    .unitWidth(UNUM_UNIT_WIDTH_FULL_NAME),
+            Locale::getEnglish(),
+            u"88M percent",
+            u"8.8M percent",
+            u"876K percent",
+            u"88K percent",
+            u"8.8K percent",
+            u"876 percent",
+            u"88 percent",
+            u"8.8 percent",
+            u"0 percent");
+
+    assertFormatSingle(
+            u"Per Percent",
+            u"measure-unit/length-meter per-measure-unit/concentr-percent unit-width-full-name",
+            u"measure-unit/length-meter per-measure-unit/concentr-percent unit-width-full-name",
+            NumberFormatter::with()
+                    .unit(MeasureUnit::getMeter())
+                    .perUnit(MeasureUnit::getPercent())
+                    .unitWidth(UNUM_UNIT_WIDTH_FULL_NAME),
+            Locale::getEnglish(),
+            50,
+            u"50 meters per percent");
 }
 
 void NumberFormatterApiTest::percentParity() {

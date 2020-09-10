@@ -18,7 +18,6 @@
 
 #if !UCONFIG_NO_FORMATTING
 
-#include "unicode/localpointer.h"
 #include "unicode/uloc.h"
 #include "unicode/ucurr.h"
 #include "unicode/umisc.h"
@@ -26,6 +25,10 @@
 #include "unicode/uformattable.h"
 #include "unicode/udisplaycontext.h"
 #include "unicode/ufieldpositer.h"
+
+#if U_SHOW_CPLUSPLUS_API
+#include "unicode/localpointer.h"
+#endif   // U_SHOW_CPLUSPLUS_API
 
 /**
  * \file
@@ -391,6 +394,30 @@ typedef enum UNumberFormatFields {
 #endif  /* U_HIDE_DEPRECATED_API */
 } UNumberFormatFields;
 
+
+#ifndef U_HIDE_DRAFT_API
+/**
+ * Selectors with special numeric values to use locale default minimum grouping
+ * digits for the DecimalFormat/UNumberFormat setMinimumGroupingDigits method.
+ * Do not use these constants with the [U]NumberFormatter API.
+ *
+ * @draft ICU 68
+ */
+typedef enum UNumberFormatMinimumGroupingDigits {
+    /**
+     * Display grouping using the default strategy for all locales.
+     * @draft ICU 68
+     */
+    UNUM_MINIMUM_GROUPING_DIGITS_AUTO = -2,
+    /**
+     * Display grouping using locale defaults, except do not show grouping on
+     * values smaller than 10000 (such that there is a minimum of two digits
+     * before the first separator).
+     * @draft ICU 68
+     */
+    UNUM_MINIMUM_GROUPING_DIGITS_MIN2 = -3,
+} UNumberFormatMinimumGroupingDigits;
+#endif  // U_HIDE_DRAFT_API
 
 /**
  * Create and return a new UNumberFormat for formatting and parsing
@@ -898,7 +925,7 @@ unum_parseToUFormattable(const UNumberFormat* fmt,
  * on a DecimalFormat, other formats return U_UNSUPPORTED_ERROR
  * in the status.
  * @param format The formatter to set.
- * @param localized TRUE if the pattern is localized, FALSE otherwise.
+ * @param localized true if the pattern is localized, false otherwise.
  * @param pattern The new pattern
  * @param patternLength The length of pattern, or -1 if null-terminated.
  * @param parseError A pointer to UParseError to receive information
@@ -1273,8 +1300,8 @@ unum_setTextAttribute(    UNumberFormat*                    fmt,
  * Extract the pattern from a UNumberFormat.  The pattern will follow
  * the DecimalFormat pattern syntax.
  * @param fmt The formatter to query.
- * @param isPatternLocalized TRUE if the pattern should be localized,
- * FALSE otherwise.  This is ignored if the formatter is a rule-based
+ * @param isPatternLocalized true if the pattern should be localized,
+ * false otherwise.  This is ignored if the formatter is a rule-based
  * formatter.
  * @param result A pointer to a buffer to receive the pattern.
  * @param resultLength The maximum size of result.

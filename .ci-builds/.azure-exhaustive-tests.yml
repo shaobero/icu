@@ -12,6 +12,18 @@ trigger:
     include:
     - master
     - maint/maint-*
+  paths:
+    include:
+    - '*'
+    exclude:
+    - docs/*
+    - tools/*
+    - vendor/*
+    - .appveyor.xml
+    - .cpyskip.txt
+    - .travis.yml
+    - KEYS
+    - README.md
 
 jobs:
 #-------------------------------------------------------------------------
@@ -26,7 +38,7 @@ jobs:
   steps:
     - checkout: self
       lfs: true
-      fetchDepth: 1
+      fetchDepth: 10
     - script: |
         echo "Building ICU4J" && cd icu4j && ant init && ant exhaustiveCheck
       displayName: 'Build and Exhaustive Tests'
@@ -48,7 +60,7 @@ jobs:
   steps:
     - checkout: self
       lfs: true
-      fetchDepth: 1
+      fetchDepth: 10
     - script: |
         cd icu4c/source && ./runConfigureICU Linux && make -j2
       displayName: 'Build'

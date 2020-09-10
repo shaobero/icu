@@ -22,17 +22,38 @@ static const char kDefaultCurrency8[] = "XXX";
 /**
  * A struct representing a single unit (optional SI prefix and dimensionality).
  */
-struct SingleUnitImpl : public UMemory {
+struct U_I18N_API SingleUnitImpl : public UMemory {
     /**
      * Gets a single unit from the MeasureUnit. If there are multiple single units, sets an error
-     * code and return the base dimensionless unit. Parses if necessary.
+     * code and returns the base dimensionless unit. Parses if necessary.
      */
     static SingleUnitImpl forMeasureUnit(const MeasureUnit& measureUnit, UErrorCode& status);
 
     /** Transform this SingleUnitImpl into a MeasureUnit, simplifying if possible. */
     MeasureUnit build(UErrorCode& status) const;
 
-    /** Compare this SingleUnitImpl to another SingleUnitImpl. */
+    /**
+     * Returns the "simple unit ID", without SI or dimensionality prefix: this
+     * instance may represent a square-kilometer, but only "meter" will be
+     * returned.
+     *
+     * The returned pointer points at memory that exists for the duration of the
+     * program's running.
+     */
+    const char *getSimpleUnitID() const;
+
+    /**
+     * Compare this SingleUnitImpl to another SingleUnitImpl for the sake of
+     * sorting and coalescing.
+     *
+     * Takes the sign of dimensionality into account, but not the absolute
+     * value: per-meter is not considered the same as meter, but meter is
+     * considered the same as square-meter.
+     *
+     * The dimensionless unit generally does not get compared, but if it did, it
+     * would sort before other units by virtue of index being < 0 and
+     * dimensionality not being negative.
+     */
     int32_t compareTo(const SingleUnitImpl& other) const {
         if (dimensionality < 0 && other.dimensionality > 0) {
             // Positive dimensions first
@@ -66,25 +87,53 @@ struct SingleUnitImpl : public UMemory {
         return (compareTo(other) == 0);
     }
 
-    /** Simple unit index, unique for every simple unit. */
-    int32_t index = 0;
+    /**
+     * Returns true if this unit is the "dimensionless base unit", as produced
+     * by the MeasureUnit() default constructor. (This does not include the
+     * likes of concentrations or angles.)
+     */
+    bool isDimensionless() const {
+        return index == -1;
+    }
 
-    /** Simple unit identifier; memory not owned by the SimpleUnit. */
-    StringPiece identifier;
+    /**
+     * Simple unit index, unique for every simple unit, -1 for the dimensionless
+     * unit. This is an index into a string list in measunit_extra.cpp.
+     *
+     * The default value is -1, meaning the dimensionless unit:
+     * isDimensionless() will return true, until index is changed.
+     */
+    int32_t index = -1;
 
-    /** SI prefix. **/
+    /**
+     * SI prefix.
+     *
+     * This is ignored for the dimensionless unit.
+     */
     UMeasureSIPrefix siPrefix = UMEASURE_SI_PREFIX_ONE;
-    
-    /** Dimensionality. **/
+
+    /**
+     * Dimensionality.
+     *
+     * This is meaningless for the dimensionless unit.
+     */
     int32_t dimensionality = 1;
 };
 
+// Export explicit template instantiations of MaybeStackArray, MemoryPool and
+// MaybeStackVector. This is required when building DLLs for Windows. (See
+// datefmt.h, collationiterator.h, erarules.h and others for similar examples.)
+#if U_PF_WINDOWS <= U_PLATFORM && U_PLATFORM <= U_PF_CYGWIN
+template class U_I18N_API MaybeStackArray<SingleUnitImpl*, 8>;
+template class U_I18N_API MemoryPool<SingleUnitImpl, 8>;
+template class U_I18N_API MaybeStackVector<SingleUnitImpl, 8>;
+#endif
 
 /**
  * Internal representation of measurement units. Capable of representing all complexities of units,
  * including mixed and compound units.
  */
-struct MeasureUnitImpl : public UMemory {
+struct U_I18N_API MeasureUnitImpl : public UMemory {
     /** Extract the MeasureUnitImpl from a MeasureUnit. */
     static inline const MeasureUnitImpl* get(const MeasureUnit& measureUnit) {
         return measureUnit.fImpl;
@@ -95,7 +144,8 @@ struct MeasureUnitImpl : public UMemory {
      *
      * @param identifier The unit identifier string.
      * @param status Set if the identifier string is not valid.
-     * @return A newly parsed value object.
+     * @return A newly parsed value object. Behaviour of this unit is
+     * unspecified if an error is returned via status.
      */
     static MeasureUnitImpl forIdentifier(StringPiece identifier, UErrorCode& status);
 
@@ -137,26 +187,28 @@ struct MeasureUnitImpl : public UMemory {
     /**
      * Create a copy of this MeasureUnitImpl. Don't use copy constructor to make this explicit.
      */
-    inline MeasureUnitImpl copy(UErrorCode& status) const {
-        MeasureUnitImpl result;
-        result.complexity = complexity;
-        result.units.appendAll(units, status);
-        result.identifier.append(identifier, status);
-        return result;
-    }
+    MeasureUnitImpl copy(UErrorCode& status) const;
 
     /** Mutates this MeasureUnitImpl to take the reciprocal. */
     void takeReciprocal(UErrorCode& status);
 
-    /** Mutates this MeasureUnitImpl to append a single unit. */
+    /**
+     * Mutates this MeasureUnitImpl to append a single unit.
+     *
+     * @return true if a new item was added. If unit is the dimensionless unit,
+     * it is never added: the return value will always be false.
+     */
     bool append(const SingleUnitImpl& singleUnit, UErrorCode& status);
 
     /** The complexity, either SINGLE, COMPOUND, or MIXED. */
     UMeasureUnitComplexity complexity = UMEASURE_UNIT_SINGLE;
 
     /**
-     * The list of simple units. These may be summed or multiplied, based on the value of the
-     * complexity field.
+     * The list of simple units. These may be summed or multiplied, based on the
+     * value of the complexity field.
+     *
+     * The "dimensionless" unit (SingleUnitImpl default constructor) must not be
+     * added to this list.
      */
     MaybeStackVector<SingleUnitImpl> units;
 
@@ -165,7 +217,6 @@ struct MeasureUnitImpl : public UMemory {
      */
     CharString identifier;
 };
-
 
 U_NAMESPACE_END
 

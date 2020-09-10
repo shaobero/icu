@@ -1,5 +1,5 @@
 // © 2018 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html#License
+// License & terms of use: http://www.unicode.org/copyright.html
 package com.ibm.icu.dev.test.number;
 
 import static org.junit.Assert.assertEquals;
@@ -347,6 +347,67 @@ public class NumberSkeletonTest {
             String skeleton = NumberFormatter.with().roundingMode(mode).toSkeleton();
             String modeString = mode.toString().toLowerCase().replace('_', '-');
             assertEquals(mode.toString(), modeString, skeleton.substring(14));
+        }
+    }
+
+    @Test
+    public void perUnitInArabic() {
+        String[][] cases = {
+                {"area", "acre"},
+                {"digital", "bit"},
+                {"digital", "byte"},
+                {"temperature", "celsius"},
+                {"length", "centimeter"},
+                {"duration", "day"},
+                {"angle", "degree"},
+                {"temperature", "fahrenheit"},
+                {"volume", "fluid-ounce"},
+                {"length", "foot"},
+                {"volume", "gallon"},
+                {"digital", "gigabit"},
+                {"digital", "gigabyte"},
+                {"mass", "gram"},
+                {"area", "hectare"},
+                {"duration", "hour"},
+                {"length", "inch"},
+                {"digital", "kilobit"},
+                {"digital", "kilobyte"},
+                {"mass", "kilogram"},
+                {"length", "kilometer"},
+                {"volume", "liter"},
+                {"digital", "megabit"},
+                {"digital", "megabyte"},
+                {"length", "meter"},
+                {"length", "mile"},
+                {"length", "mile-scandinavian"},
+                {"volume", "milliliter"},
+                {"length", "millimeter"},
+                {"duration", "millisecond"},
+                {"duration", "minute"},
+                {"duration", "month"},
+                {"mass", "ounce"},
+                {"concentr", "percent"},
+                {"digital", "petabyte"},
+                {"mass", "pound"},
+                {"duration", "second"},
+                {"mass", "stone"},
+                {"digital", "terabit"},
+                {"digital", "terabyte"},
+                {"duration", "week"},
+                {"length", "yard"},
+                {"duration", "year"},
+        };
+
+        ULocale arabic = new ULocale("ar");
+        for (String[] cas1 : cases) {
+            for (String[] cas2 : cases) {
+                String skeleton = "measure-unit/";
+                skeleton += cas1[0] + "-" + cas1[1] + " per-measure-unit/" + cas2[0] + "-" + cas2[1];
+
+                String actual = NumberFormatter.forSkeleton(skeleton).locale(arabic).format(5142.3)
+                        .toString();
+                // Just make sure it won't throw exception
+            }
         }
     }
 }

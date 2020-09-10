@@ -30,8 +30,11 @@
 #include "unicode/utypes.h"
 #include "unicode/ucnv.h"
 #include "unicode/utrans.h"
-#include "unicode/localpointer.h"
 #include "unicode/unum.h"
+
+#if U_SHOW_CPLUSPLUS_API
+#include "unicode/localpointer.h"
+#endif   // U_SHOW_CPLUSPLUS_API
 
 #if !UCONFIG_NO_CONVERSION
 
@@ -228,7 +231,7 @@ typedef enum {
  * That is, data written to a UFILE will be formatted using the conventions
  * specified by that UFILE's Locale; this data will be in the character set
  * specified by that UFILE's codepage.
- * @param filename The name of the file to open.
+ * @param filename The name of the file to open. Must be 0-terminated.
  * @param perm The read/write permission for the UFILE; one of "r", "w", "rw"
  * @param locale The locale whose conventions will be used to format 
  * and parse output. If this parameter is NULL, the default locale will 
@@ -251,7 +254,7 @@ u_fopen(const char    *filename,
  * That is, data written to a UFILE will be formatted using the conventions
  * specified by that UFILE's Locale; this data will be in the character set
  * specified by that UFILE's codepage.
- * @param filename The name of the file to open.
+ * @param filename The name of the file to open. Must be 0-terminated.
  * @param perm The read/write permission for the UFILE; one of "r", "w", "rw"
  * @param locale The locale whose conventions will be used to format
  * and parse output. If this parameter is NULL, the default locale will
@@ -360,7 +363,7 @@ U_NAMESPACE_END
 /**
  * Tests if the UFILE is at the end of the file stream.
  * @param f The UFILE from which to read.
- * @return Returns TRUE after the first read operation that attempts to
+ * @return Returns true after the first read operation that attempts to
  * read past the end of the file. It returns FALSE if the current position is
  * not end of file.
  * @stable ICU 3.0

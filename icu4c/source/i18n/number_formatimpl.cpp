@@ -130,9 +130,10 @@ NumberFormatterImpl::macrosToMicroGenerator(const MacroProps& macros, bool safe,
 
     // Pre-compute a few values for efficiency.
     bool isCurrency = utils::unitIsCurrency(macros.unit);
-    bool isNoUnit = utils::unitIsNoUnit(macros.unit);
+    bool isBaseUnit = utils::unitIsBaseUnit(macros.unit);
     bool isPercent = utils::unitIsPercent(macros.unit);
     bool isPermille = utils::unitIsPermille(macros.unit);
+    bool isCompactNotation = macros.notation.fType == Notation::NTN_COMPACT;
     bool isAccounting =
             macros.sign == UNUM_SIGN_ACCOUNTING || macros.sign == UNUM_SIGN_ACCOUNTING_ALWAYS ||
             macros.sign == UNUM_SIGN_ACCOUNTING_EXCEPT_ZERO;
@@ -144,8 +145,18 @@ NumberFormatterImpl::macrosToMicroGenerator(const MacroProps& macros, bool safe,
     if (macros.unitWidth != UNUM_UNIT_WIDTH_COUNT) {
         unitWidth = macros.unitWidth;
     }
-    bool isCldrUnit = !isCurrency && !isNoUnit &&
-        (unitWidth == UNUM_UNIT_WIDTH_FULL_NAME || !(isPercent || isPermille));
+    // Use CLDR unit data for all MeasureUnits (not currency and not
+    // no-unit), except use the dedicated percent pattern for percent and
+    // permille. However, use the CLDR unit data for percent/permille if a
+    // long name was requested OR if compact notation is being used, since
+    // compact notation overrides the middle modifier (micros.modMiddle)
+    // normally used for the percent pattern.
+    bool isCldrUnit = !isCurrency
+        && !isBaseUnit
+        && (unitWidth == UNUM_UNIT_WIDTH_FULL_NAME
+            || !(isPercent || isPermille)
+            || isCompactNotation
+        );
 
     // Select the numbering system.
     LocalPointer<const NumberingSystem> nsLocal;
@@ -203,6 +214,9 @@ NumberFormatterImpl::macrosToMicroGenerator(const MacroProps& macros, bool safe,
             patternStyle = CLDR_PATTERN_STYLE_CURRENCY;
         }
         pattern = utils::getPatternForStyle(macros.locale, nsName, patternStyle, status);
+        if (U_FAILURE(status)) {
+            return nullptr;
+        }
     }
     auto patternInfo = new ParsedPatternInfo();
     if (patternInfo == nullptr) {
@@ -211,6 +225,9 @@ NumberFormatterImpl::macrosToMicroGenerator(const MacroProps& macros, bool safe,
     }
     fPatternInfo.adoptInstead(patternInfo);
     PatternParser::parseToPatternInfo(UnicodeString(pattern), *patternInfo, status);
+    if (U_FAILURE(status)) {
+        return nullptr;
+    }
 
     /////////////////////////////////////////////////////////////////////////////////////
     /// START POPULATING THE DEFAULT MICROPROPS AND BUILDING THE MICROPROPS GENERATOR ///
@@ -226,7 +243,7 @@ NumberFormatterImpl::macrosToMicroGenerator(const MacroProps& macros, bool safe,
     Precision precision;
     if (!macros.precision.isBogus()) {
         precision = macros.precision;
-    } else if (macros.notation.fType == Notation::NTN_COMPACT) {
+    } else if (isCompactNotation) {
         precision = Precision::integer().withMinDigits(2);
     } else if (isCurrency) {
         precision = Precision::currency(UCURR_USAGE_STANDARD);
@@ -241,11 +258,14 @@ NumberFormatterImpl::macrosToMicroGenerator(const MacroProps& macros, bool safe,
         roundingMode = precision.fRoundingMode;
     }
     fMicros.rounder = {precision, roundingMode, currency, status};
+    if (U_FAILURE(status)) {
+        return nullptr;
+    }
 
     // Grouping strategy
     if (!macros.grouper.isBogus()) {
         fMicros.grouping = macros.grouper;
-    } else if (macros.notation.fType == Notation::NTN_COMPACT) {
+    } else if (isCompactNotation) {
         // Compact notation uses minGrouping by default since ICU 59
         fMicros.grouping = Grouper::forStrategy(UNUM_GROUPING_MIN2);
     } else {
@@ -323,6 +343,9 @@ NumberFormatterImpl::macrosToMicroGenerator(const MacroProps& macros, bool safe,
     if (safe) {
         fImmutablePatternModifier.adoptInstead(patternModifier->createImmutable(status));
     }
+    if (U_FAILURE(status)) {
+        return nullptr;
+    }
 
     // Outer modifier (CLDR units and currency long names)
     if (isCldrUnit) {
@@ -349,9 +372,12 @@ NumberFormatterImpl::macrosToMicroGenerator(const MacroProps& macros, bool safe,
         // No outer modifier required
         fMicros.modOuter = &fMicros.helpers.emptyWeakModifier;
     }
+    if (U_FAILURE(status)) {
+        return nullptr;
+    }
 
     // Compact notation
-    if (macros.notation.fType == Notation::NTN_COMPACT) {
+    if (isCompactNotation) {
         CompactType compactType = (isCurrency && unitWidth != UNUM_UNIT_WIDTH_FULL_NAME)
                                   ? CompactType::TYPE_CURRENCY : CompactType::TYPE_DECIMAL;
         auto newCompactHandler = new CompactHandler(
@@ -370,6 +396,9 @@ NumberFormatterImpl::macrosToMicroGenerator(const MacroProps& macros, bool safe,
         }
         fCompactHandler.adoptInstead(newCompactHandler);
         chain = fCompactHandler.getAlias();
+    }
+    if (U_FAILURE(status)) {
+        return nullptr;
     }
 
     // Always add the pattern modifier as the last element of the chain.
@@ -399,6 +428,7 @@ NumberFormatterImpl::resolvePluralRules(const PluralRules* rulesPtr, const Local
 
 int32_t NumberFormatterImpl::writeAffixes(const MicroProps& micros, FormattedStringBuilder& string,
                                           int32_t start, int32_t end, UErrorCode& status) {
+    U_ASSERT(micros.modOuter != nullptr);
     // Always apply the inner modifier (which is "strong").
     int32_t length = micros.modInner->apply(string, start, end, status);
     if (micros.padding.isValid()) {

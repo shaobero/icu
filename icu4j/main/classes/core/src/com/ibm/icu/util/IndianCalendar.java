@@ -1,5 +1,5 @@
 // © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html#License
+// License & terms of use: http://www.unicode.org/copyright.html
 /*
  *******************************************************************************
  * Copyright (C) 1996-2011, International Business Machines Corporation and    *
@@ -185,7 +185,7 @@ public class IndianCalendar extends Calendar {
      * @stable ICU 3.8
      */
     public IndianCalendar(Locale aLocale) {
-        this(TimeZone.getDefault(), aLocale);
+        this(TimeZone.forLocaleOrDefault(aLocale), aLocale);
     }
 
     /**
@@ -196,7 +196,7 @@ public class IndianCalendar extends Calendar {
      * @stable ICU 3.8
      */
     public IndianCalendar(ULocale locale) {
-       this(TimeZone.getDefault(), locale);
+        this(TimeZone.forULocaleOrDefault(locale), locale);
     }
 
     /**

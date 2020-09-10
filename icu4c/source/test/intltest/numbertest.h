@@ -95,6 +95,8 @@ class NumberFormatterApiTest : public IntlTestWithFieldPosition {
     CurrencyUnit ESP;
     CurrencyUnit PTE;
     CurrencyUnit RON;
+    CurrencyUnit TWD;
+    CurrencyUnit TRY;
     CurrencyUnit CNY;
 
     MeasureUnit METER;
@@ -258,6 +260,7 @@ class NumberSkeletonTest : public IntlTest {
     void defaultTokens();
     void flexibleSeparators();
     void wildcardCharacters();
+    void perUnitInArabic();
 
     void runIndexedTest(int32_t index, UBool exec, const char *&name, char *par = 0);
 

@@ -102,12 +102,6 @@ typedef enum ELocalePos {
     eMAX_LOCALES
 } ELocalePos;
 
-U_CFUNC int32_t locale_getKeywords(const char *localeID,
-            char prev,
-            char *keywords, int32_t keywordCapacity,
-            UBool valuesToo,
-            UErrorCode *status);
-
 U_CDECL_BEGIN
 //
 // Deleter function for Locales owned by the default Locale hash table/
@@ -708,7 +702,7 @@ Locale& Locale::init(const char* localeID, UBool canonicalize)
                     const char* end = begin;
                     // We may have multiple variants, need to look at each of
                     // them.
-                    do {
+                    for (;;) {
                         status = U_ZERO_ERROR;
                         end = uprv_strchr(begin, '_');
                         int32_t len = (end == nullptr) ? int32_t(uprv_strlen(begin)) : int32_t(end - begin);
@@ -739,8 +733,9 @@ Locale& Locale::init(const char* localeID, UBool canonicalize)
                                              uprv_strchr(fullName, '@'), status).data(), false);
                             break;
                         }
+                        if (end == nullptr) break;
                         begin = end + 1;
-                    } while (end != nullptr);
+                    }
                 }  // End of handle language _ variant
                 // Handle cases of key pattern "language _ Script _ REGION"
                 // ex: Map "ks_Arab_IN" to "ks_IN"
@@ -1024,13 +1019,14 @@ Locale::forLanguageTag(StringPiece tag, UErrorCode& status)
         return result;
     }
 
-    // If a BCP-47 language tag is passed as the language parameter to the
+    // If a BCP 47 language tag is passed as the language parameter to the
     // normal Locale constructor, it will actually fall back to invoking
     // uloc_forLanguageTag() to parse it if it somehow is able to detect that
-    // the string actually is BCP-47. This works well for things like strings
-    // using BCP-47 extensions, but it does not at all work for things like
-    // BCP-47 grandfathered tags (eg. "en-GB-oed") which are possible to also
-    // interpret as ICU locale IDs and because of that won't trigger the BCP-47
+    // the string actually is BCP 47. This works well for things like strings
+    // using BCP 47 extensions, but it does not at all work for things like
+    // legacy language tags (marked as “Type: grandfathered” in BCP 47,
+    // e.g., "en-GB-oed") which are possible to also
+    // interpret as ICU locale IDs and because of that won't trigger the BCP 47
     // parsing. Therefore the code here explicitly calls uloc_forLanguageTag()
     // and then Locale::init(), instead of just calling the normal constructor.
 
@@ -1414,8 +1410,6 @@ UnicodeKeywordEnumeration::~UnicodeKeywordEnumeration() = default;
 StringEnumeration *
 Locale::createKeywords(UErrorCode &status) const
 {
-    char keywords[256];
-    int32_t keywordCapacity = sizeof keywords;
     StringEnumeration *result = NULL;
 
     if (U_FAILURE(status)) {
@@ -1426,9 +1420,11 @@ Locale::createKeywords(UErrorCode &status) const
     const char* assignment = uprv_strchr(fullName, '=');
     if(variantStart) {
         if(assignment > variantStart) {
-            int32_t keyLen = locale_getKeywords(variantStart+1, '@', keywords, keywordCapacity, FALSE, &status);
-            if(U_SUCCESS(status) && keyLen) {
-                result = new KeywordEnumeration(keywords, keyLen, 0, status);
+            CharString keywords;
+            CharStringByteSink sink(&keywords);
+            ulocimp_getKeywords(variantStart+1, '@', sink, FALSE, &status);
+            if (U_SUCCESS(status) && !keywords.isEmpty()) {
+                result = new KeywordEnumeration(keywords.data(), keywords.length(), 0, status);
                 if (!result) {
                     status = U_MEMORY_ALLOCATION_ERROR;
                 }
@@ -1443,8 +1439,6 @@ Locale::createKeywords(UErrorCode &status) const
 StringEnumeration *
 Locale::createUnicodeKeywords(UErrorCode &status) const
 {
-    char keywords[256];
-    int32_t keywordCapacity = sizeof keywords;
     StringEnumeration *result = NULL;
 
     if (U_FAILURE(status)) {
@@ -1455,9 +1449,11 @@ Locale::createUnicodeKeywords(UErrorCode &status) const
     const char* assignment = uprv_strchr(fullName, '=');
     if(variantStart) {
         if(assignment > variantStart) {
-            int32_t keyLen = locale_getKeywords(variantStart+1, '@', keywords, keywordCapacity, FALSE, &status);
-            if(U_SUCCESS(status) && keyLen) {
-                result = new UnicodeKeywordEnumeration(keywords, keyLen, 0, status);
+            CharString keywords;
+            CharStringByteSink sink(&keywords);
+            ulocimp_getKeywords(variantStart+1, '@', sink, FALSE, &status);
+            if (U_SUCCESS(status) && !keywords.isEmpty()) {
+                result = new UnicodeKeywordEnumeration(keywords.data(), keywords.length(), 0, status);
                 if (!result) {
                     status = U_MEMORY_ALLOCATION_ERROR;
                 }
@@ -1492,48 +1488,7 @@ Locale::getKeywordValue(StringPiece keywordName, ByteSink& sink, UErrorCode& sta
         return;
     }
 
-    LocalMemory<char> scratch;
-    int32_t scratch_capacity = 16;  // Arbitrarily chosen default size.
-
-    char* buffer;
-    int32_t result_capacity, reslen;
-
-    for (;;) {
-        if (scratch.allocateInsteadAndReset(scratch_capacity) == nullptr) {
-            status = U_MEMORY_ALLOCATION_ERROR;
-            return;
-        }
-
-        buffer = sink.GetAppendBuffer(
-                /*min_capacity=*/scratch_capacity,
-                /*desired_capacity_hint=*/scratch_capacity,
-                scratch.getAlias(),
-                scratch_capacity,
-                &result_capacity);
-
-        reslen = uloc_getKeywordValue(
-                fullName,
-                keywordName_nul.data(),
-                buffer,
-                result_capacity,
-                &status);
-
-        if (status != U_BUFFER_OVERFLOW_ERROR) {
-            break;
-        }
-
-        scratch_capacity = reslen;
-        status = U_ZERO_ERROR;
-    }
-
-    if (U_FAILURE(status)) {
-        return;
-    }
-
-    sink.Append(buffer, reslen);
-    if (status == U_STRING_NOT_TERMINATED_WARNING) {
-        status = U_ZERO_ERROR;  // Terminators not used.
-    }
+    ulocimp_getKeywordValue(fullName, keywordName_nul.data(), sink, &status);
 }
 
 void

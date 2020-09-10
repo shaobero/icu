@@ -1,11 +1,12 @@
 // © 2019 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html#License
+// License & terms of use: http://www.unicode.org/copyright.html
 
 // localematchertest.cpp
 // created: 2019jul04 Markus W. Scherer
 
 #include <string>
 #include <vector>
+#include <utility>
 
 #include "unicode/utypes.h"
 #include "unicode/localematcher.h"
@@ -57,8 +58,10 @@ public:
     void testBasics();
     void testSupportedDefault();
     void testUnsupportedDefault();
+    void testNoDefault();
     void testDemotion();
     void testDirection();
+    void testMaxDistanceAndIsMatch();
     void testMatch();
     void testResolvedLocale();
     void testDataDriven();
@@ -81,8 +84,10 @@ void LocaleMatcherTest::runIndexedTest(int32_t index, UBool exec, const char *&n
     TESTCASE_AUTO(testBasics);
     TESTCASE_AUTO(testSupportedDefault);
     TESTCASE_AUTO(testUnsupportedDefault);
+    TESTCASE_AUTO(testNoDefault);
     TESTCASE_AUTO(testDemotion);
     TESTCASE_AUTO(testDirection);
+    TESTCASE_AUTO(testMaxDistanceAndIsMatch);
     TESTCASE_AUTO(testMatch);
     TESTCASE_AUTO(testResolvedLocale);
     TESTCASE_AUTO(testDataDriven);
@@ -301,6 +306,29 @@ void LocaleMatcherTest::testUnsupportedDefault() {
                  -1, result.getSupportedIndex());
 }
 
+void LocaleMatcherTest::testNoDefault() {
+    // We want nullptr instead of any default locale.
+    IcuTestErrorCode errorCode(*this, "testNoDefault");
+    Locale locales[] = { "fr", "en_GB", "en" };
+    LocaleMatcher matcher = LocaleMatcher::Builder().
+        setSupportedLocales(ARRAY_RANGE(locales)).
+        setNoDefaultLocale().
+        build(errorCode);
+    const Locale *best = matcher.getBestMatch("en_GB", errorCode);
+    assertEquals("getBestMatch(en_GB)", "en_GB", locString(best));
+    best = matcher.getBestMatch("en_US", errorCode);
+    assertEquals("getBestMatch(en_US)", "en", locString(best));
+    best = matcher.getBestMatch("fr_FR", errorCode);
+    assertEquals("getBestMatch(fr_FR)", "fr", locString(best));
+    best = matcher.getBestMatch("ja_JP", errorCode);
+    assertEquals("getBestMatch(ja_JP)", "(null)", locString(best));
+    LocaleMatcher::Result result = matcher.getBestMatchResult("ja_JP", errorCode);
+    assertEquals("getBestMatchResult(ja_JP).supp",
+                 "(null)", locString(result.getSupportedLocale()));
+    assertEquals("getBestMatchResult(ja_JP).suppIndex",
+                 -1, result.getSupportedIndex());
+}
+
 void LocaleMatcherTest::testDemotion() {
     IcuTestErrorCode errorCode(*this, "testDemotion");
     Locale supported[] = { "fr", "de-CH", "it" };
@@ -333,7 +361,9 @@ void LocaleMatcherTest::testDirection() {
     {
         // arz is a close one-way match to ar, and the region matches.
         // (Egyptian Arabic vs. Arabic)
-        LocaleMatcher withOneWay = builder.build(errorCode);
+        // Also explicitly exercise the move copy constructor.
+        LocaleMatcher built = builder.build(errorCode);
+        LocaleMatcher withOneWay(std::move(built));
         Locale::RangeIterator<Locale *> desiredIter(ARRAY_RANGE(desired));
         assertEquals("with one-way", "ar",
                      locString(withOneWay.getBestMatch(desiredIter, errorCode)));
@@ -341,13 +371,46 @@ void LocaleMatcherTest::testDirection() {
     {
         // nb is a less close two-way match to nn, and the regions differ.
         // (Norwegian Bokmal vs. Nynorsk)
-        LocaleMatcher onlyTwoWay =
+        // Also explicitly exercise the move assignment operator.
+        LocaleMatcher onlyTwoWay = builder.build(errorCode);
+        LocaleMatcher built =
             builder.setDirection(ULOCMATCH_DIRECTION_ONLY_TWO_WAY).build(errorCode);
+        onlyTwoWay = std::move(built);
         Locale::RangeIterator<Locale *> desiredIter(ARRAY_RANGE(desired));
         assertEquals("only two-way", "nn",
                      locString(onlyTwoWay.getBestMatch(desiredIter, errorCode)));
     }
 }
+
+void LocaleMatcherTest::testMaxDistanceAndIsMatch() {
+    IcuTestErrorCode errorCode(*this, "testMaxDistanceAndIsMatch");
+    LocaleMatcher::Builder builder;
+    LocaleMatcher standard = builder.build(errorCode);
+    Locale germanLux("de-LU");
+    Locale germanPhoenician("de-Phnx-AT");
+    Locale greek("el");
+    assertTrue("standard de-LU / de", standard.isMatch(germanLux, Locale::getGerman(), errorCode));
+    assertFalse("standard de-Phnx-AT / de",
+                standard.isMatch(germanPhoenician, Locale::getGerman(), errorCode));
+
+    // Allow a script difference to still match.
+    LocaleMatcher loose =
+        builder.setMaxDistance(germanPhoenician, Locale::getGerman()).build(errorCode);
+    assertTrue("loose de-LU / de", loose.isMatch(germanLux, Locale::getGerman(), errorCode));
+    assertTrue("loose de-Phnx-AT / de",
+               loose.isMatch(germanPhoenician, Locale::getGerman(), errorCode));
+    assertFalse("loose el / de", loose.isMatch(greek, Locale::getGerman(), errorCode));
+
+    // Allow at most a regional difference.
+    LocaleMatcher regional =
+        builder.setMaxDistance(Locale("de-AT"), Locale::getGerman()).build(errorCode);
+    assertTrue("regional de-LU / de",
+               regional.isMatch(Locale("de-LU"), Locale::getGerman(), errorCode));
+    assertFalse("regional da / no", regional.isMatch(Locale("da"), Locale("no"), errorCode));
+    assertFalse("regional zh-Hant / zh",
+                regional.isMatch(Locale::getChinese(), Locale::getTraditionalChinese(), errorCode));
+}
+
 
 void LocaleMatcherTest::testMatch() {
     IcuTestErrorCode errorCode(*this, "testMatch");

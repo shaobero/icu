@@ -157,6 +157,7 @@ struct RangeMacroProps;
 struct UFormattedNumberImpl;
 class MutablePatternModifier;
 class ImmutablePatternModifier;
+struct DecimalFormatWarehouse;
 
 /**
  * Used for NumberRangeFormatter and implemented in numrange_fluent.cpp.
@@ -371,9 +372,9 @@ class U_I18N_API Notation : public UMemory {
     UBool copyErrorTo(UErrorCode &status) const {
         if (fType == NTN_ERROR) {
             status = fUnion.errorCode;
-            return TRUE;
+            return true;
         }
-        return FALSE;
+        return false;
     }
 
     // To allow MacroProps to initialize empty instances:
@@ -725,9 +726,9 @@ class U_I18N_API Precision : public UMemory {
     UBool copyErrorTo(UErrorCode &status) const {
         if (fType == RND_ERROR) {
             status = fUnion.errorCode;
-            return TRUE;
+            return true;
         }
-        return FALSE;
+        return false;
     }
 
     // On the parent type so that this method can be called internally on Precision instances.
@@ -969,9 +970,9 @@ class U_I18N_API IntegerWidth : public UMemory {
     UBool copyErrorTo(UErrorCode &status) const {
         if (fHasError) {
             status = fUnion.errorCode;
-            return TRUE;
+            return true;
         }
-        return FALSE;
+        return false;
     }
 
     void apply(impl::DecimalQuantity &quantity, UErrorCode &status) const;
@@ -1097,9 +1098,9 @@ class U_I18N_API Scale : public UMemory {
     UBool copyErrorTo(UErrorCode &status) const {
         if (fError != U_ZERO_ERROR) {
             status = fError;
-            return TRUE;
+            return true;
         }
-        return FALSE;
+        return false;
     }
 
     void applyTo(impl::DecimalQuantity& quantity) const;
@@ -1192,12 +1193,12 @@ class U_I18N_API SymbolsWrapper : public UMemory {
     UBool copyErrorTo(UErrorCode &status) const {
         if (fType == SYMPTR_DFS && fPtr.dfs == nullptr) {
             status = U_MEMORY_ALLOCATION_ERROR;
-            return TRUE;
+            return true;
         } else if (fType == SYMPTR_NS && fPtr.ns == nullptr) {
             status = U_MEMORY_ALLOCATION_ERROR;
-            return TRUE;
+            return true;
         }
-        return FALSE;
+        return false;
     }
 
   private:
@@ -1341,9 +1342,9 @@ class U_I18N_API Padder : public UMemory {
     UBool copyErrorTo(UErrorCode &status) const {
         if (fWidth == -3) {
             status = fUnion.errorCode;
-            return TRUE;
+            return true;
         }
-        return FALSE;
+        return false;
     }
 
     bool isValid() const {
@@ -1372,10 +1373,10 @@ struct U_I18N_API MacroProps : public UMemory {
     Notation notation;
 
     /** @internal */
-    MeasureUnit unit; // = NoUnit::base();
+    MeasureUnit unit;  // = MeasureUnit();  (the base dimensionless unit)
 
     /** @internal */
-    MeasureUnit perUnit; // = NoUnit::base();
+    MeasureUnit perUnit;  // = MeasureUnit();  (the base dimensionless unit)
 
     /** @internal */
     Precision precision;  // = Precision();  (bogus)
@@ -2120,13 +2121,13 @@ class U_I18N_API NumberFormatterSettings {
     /**
      * Sets the UErrorCode if an error occurred in the fluent chain.
      * Preserves older error codes in the outErrorCode.
-     * @return TRUE if U_FAILURE(outErrorCode)
+     * @return true if U_FAILURE(outErrorCode)
      * @stable ICU 60
      */
     UBool copyErrorTo(UErrorCode &outErrorCode) const {
         if (U_FAILURE(outErrorCode)) {
             // Do not overwrite the older error code
-            return TRUE;
+            return true;
         }
         fMacros.copyErrorTo(outErrorCode);
         return U_FAILURE(outErrorCode);
@@ -2385,6 +2386,10 @@ class U_I18N_API LocalizedNumberFormatter
     const impl::NumberFormatterImpl* fCompiled {nullptr};
     char fUnsafeCallCount[8] {};  // internally cast to u_atomic_int32_t
 
+    // Owned pointer to a DecimalFormatWarehouse, used when copying a LocalizedNumberFormatter
+    // from a DecimalFormat.
+    const impl::DecimalFormatWarehouse* fWarehouse {nullptr};
+
     explicit LocalizedNumberFormatter(const NumberFormatterSettings<LocalizedNumberFormatter>& other);
 
     explicit LocalizedNumberFormatter(NumberFormatterSettings<LocalizedNumberFormatter>&& src) U_NOEXCEPT;
@@ -2393,9 +2398,11 @@ class U_I18N_API LocalizedNumberFormatter
 
     LocalizedNumberFormatter(impl::MacroProps &&macros, const Locale &locale);
 
-    void clear();
+    void resetCompiled();
 
     void lnfMoveHelper(LocalizedNumberFormatter&& src);
+
+    void lnfCopyHelper(const LocalizedNumberFormatter& src, UErrorCode& status);
 
     /**
      * @return true if the compiled formatter is available.

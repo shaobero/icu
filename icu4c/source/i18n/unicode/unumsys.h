@@ -15,7 +15,10 @@
 #if !UCONFIG_NO_FORMATTING
 
 #include "unicode/uenum.h"
+
+#if U_SHOW_CPLUSPLUS_API
 #include "unicode/localpointer.h"
+#endif   // U_SHOW_CPLUSPLUS_API
 
 /**
  * \file
@@ -130,7 +133,7 @@ unumsys_getName(const UNumberingSystem *unumsys);
  * Returns whether the given UNumberingSystem object is for an algorithmic (not purely
  * positional) system.
  * @param unumsys   The UNumberingSystem whose algorithmic status is desired.
- * @return          TRUE if the specified UNumberingSystem object is for an algorithmic
+ * @return          true if the specified UNumberingSystem object is for an algorithmic
  *                  system.
  * @stable ICU 52
  */
